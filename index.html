@@ -771,25 +771,18 @@
             "default": "That's interesting. Could you tell me more about how you're feeling? I'm here to listen and provide guidance."
         };
 
-        async function getAIResponse(prompt) {
+        async function getAIResponse(prompt, messageBubble) {
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
             
             // --- GOOGLE GEMINI API CONFIG ---
-            // 1. Get your free API key from: https://aistudio.google.com/app/apikey
-            // 2. Replace 'YOUR_GEMINI_API_KEY' with your actual key.
             const GEMINI_API_KEY = 'AIzaSyD_2aBc0oZsT1Bn3K8UN1JxFSAYo9M1Gzs'; 
-            const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            // Using v1 and streamGenerateContent for "better response" as in your Python code
+            const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:streamGenerateContent?key=${GEMINI_API_KEY}`;
 
             try {
-                // Show thinking state
                 statusDot.className = 'w-2 h-2 bg-yellow-500 rounded-full animate-pulse';
-                statusText.innerText = 'AI Status: Thinking (Gemini)...';
-
-                // Skip Gemini if key is not provided
-                if (GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
-                    throw new Error('API Key Missing');
-                }
+                statusText.innerText = 'AI Status: Streaming...';
 
                 const apiResponse = await fetch(GEMINI_URL, {
                     method: 'POST',
@@ -807,30 +800,55 @@
                 });
 
                 if (apiResponse.ok) {
-                    const data = await apiResponse.json();
-                    
-                    // Successful Gemini response
+                    const reader = apiResponse.body.getReader();
+                    let fullResponse = "";
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        // Hugging Face/Google stream responses come in JSON parts
+                        const lines = chunk.split('\n');
+                        for (const line of lines) {
+                            if (line.trim().startsWith('{')) {
+                                try {
+                                    const json = JSON.parse(line.trim().replace(/^,/, ''));
+                                    const textChunk = json.candidates?.[0]?.content?.parts?.[0]?.text;
+                                    if (textChunk) {
+                                        fullResponse += textChunk;
+                                        // Update the message bubble in real-time
+                                        messageBubble.innerHTML = `<p class="text-sm">${fullResponse}</p>`;
+                                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                                    }
+                                } catch (e) { /* partial chunk */ }
+                            }
+                        }
+                    }
+
                     statusDot.className = 'w-2 h-2 bg-green-500 rounded-full';
-                    statusText.innerText = 'AI Status: Connected (Gemini)';
-                    
-                    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (responseText) return responseText;
+                    statusText.innerText = 'AI Status: Connected';
+                    return fullResponse;
                 }
                 
-                throw new Error('Gemini API request failed');
+                throw new Error('Streaming API failed');
             } catch (error) {
                 console.error('AI Error:', error);
-                
-                // Update UI to show fallback state
                 statusDot.className = 'w-2 h-2 bg-red-500 rounded-full';
-                statusText.innerText = error.message === 'API Key Missing' ? 'AI Status: Key Needed' : 'AI Status: Local Knowledge';
+                statusText.innerText = 'AI Status: Local Knowledge';
                 
-                // Local fallback logic
+                // Fallback logic
                 const lowerText = prompt.toLowerCase();
+                let fallbackMsg = responses.default;
                 for (let key in responses) {
-                    if (lowerText.includes(key)) return responses[key];
+                    if (lowerText.includes(key)) {
+                        fallbackMsg = responses[key];
+                        break;
+                    }
                 }
-                return responses.default;
+                messageBubble.innerHTML = `<p class="text-sm">${fallbackMsg}</p>`;
+                return fallbackMsg;
             }
         }
 
@@ -842,12 +860,27 @@
             addMessage(text, true);
             userInput.value = '';
 
-            showTypingIndicator();
+            // Create an empty bot message bubble for streaming
+            const botMessageDiv = document.createElement('div');
+            botMessageDiv.className = 'flex gap-3 max-w-[80%]';
+            botMessageDiv.innerHTML = `
+                <div class="w-8 h-8 bg-cyan-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="bot" class="w-4 h-4 text-cyan-400"></i>
+                </div>
+                <div class="bg-white/5 p-4 rounded-2xl rounded-tl-none bot-content">
+                    <div class="typing-dot-container flex gap-1 items-center">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(botMessageDiv);
+            lucide.createIcons();
+            chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            const aiResponse = await getAIResponse(text);
-            
-            removeTypingIndicator();
-            addMessage(aiResponse);
+            const botContent = botMessageDiv.querySelector('.bot-content');
+            await getAIResponse(text, botContent);
         });
 
         // Custom Cyber-HUD Cursor Logic
