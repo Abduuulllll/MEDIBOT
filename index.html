@@ -775,43 +775,55 @@
             const statusDot = document.getElementById('status-dot');
             const statusText = document.getElementById('status-text');
             
+            // --- GOOGLE GEMINI API CONFIG ---
+            // 1. Get your free API key from: https://aistudio.google.com/app/apikey
+            // 2. Replace 'YOUR_GEMINI_API_KEY' with your actual key.
+            const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY'; 
+            const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
             try {
-                const model = 'facebook/blenderbot-400M-distill';
-                const apiUrl = `https://api-inference.huggingface.co/models/${model}`;
-                
                 // Show thinking state
                 statusDot.className = 'w-2 h-2 bg-yellow-500 rounded-full animate-pulse';
-                statusText.innerText = 'AI Status: Thinking...';
+                statusText.innerText = 'AI Status: Thinking (Gemini)...';
 
-                // We try the call with wait_for_model: true to avoid errors during loading
-                const apiResponse = await fetch(apiUrl, {
+                // Skip Gemini if key is not provided
+                if (GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
+                    throw new Error('API Key Missing');
+                }
+
+                const apiResponse = await fetch(GEMINI_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        inputs: prompt,
-                        options: { wait_for_model: true }
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `You are MediBot, a helpful AI medical assistant. 
+                                Respond to the following user message professionally and helpfully. 
+                                Keep responses concise and informative. 
+                                User: ${prompt}`
+                            }]
+                        }]
                     })
                 });
 
                 if (apiResponse.ok) {
                     const data = await apiResponse.json();
                     
-                    // Successful API response
+                    // Successful Gemini response
                     statusDot.className = 'w-2 h-2 bg-green-500 rounded-full';
-                    statusText.innerText = 'AI Status: Connected';
+                    statusText.innerText = 'AI Status: Connected (Gemini)';
                     
-                    // Handle different Hugging Face response formats
-                    const resultText = Array.isArray(data) ? data[0]?.generated_text : data.generated_text;
-                    if (resultText) return resultText;
+                    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (responseText) return responseText;
                 }
                 
-                throw new Error('API request failed');
+                throw new Error('Gemini API request failed');
             } catch (error) {
                 console.error('AI Error:', error);
                 
                 // Update UI to show fallback state
                 statusDot.className = 'w-2 h-2 bg-red-500 rounded-full';
-                statusText.innerText = 'AI Status: Local Knowledge';
+                statusText.innerText = error.message === 'API Key Missing' ? 'AI Status: Key Needed' : 'AI Status: Local Knowledge';
                 
                 // Local fallback logic
                 const lowerText = prompt.toLowerCase();
