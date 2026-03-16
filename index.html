@@ -474,8 +474,8 @@
                         <button class="p-2 hover:bg-white/10 rounded-full transition-colors"><i data-lucide="more-vertical" class="w-5 h-5 text-gray-400"></i></button>
                     </div>
                     <div id="ai-status" class="ml-auto flex items-center gap-2">
-                        <span class="text-[10px] text-gray-500 uppercase tracking-widest">AI Status:</span>
-                        <div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" id="status-dot"></div>
+                        <span id="status-text" class="text-[10px] text-gray-500 uppercase tracking-widest">AI Status: Ready</span>
+                        <div class="w-2 h-2 bg-gray-500 rounded-full" id="status-dot"></div>
                     </div>
                 </div>
 
@@ -773,35 +773,47 @@
 
         async function getAIResponse(prompt) {
             const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            
             try {
-                // Using a more reliable open model for free-tier requests
                 const model = 'facebook/blenderbot-400M-distill';
                 const apiUrl = `https://api-inference.huggingface.co/models/${model}`;
                 
-                // Set status to "working"
+                // Show thinking state
                 statusDot.className = 'w-2 h-2 bg-yellow-500 rounded-full animate-pulse';
+                statusText.innerText = 'AI Status: Thinking...';
 
+                // We try the call with wait_for_model: true to avoid errors during loading
                 const apiResponse = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ inputs: prompt })
+                    body: JSON.stringify({ 
+                        inputs: prompt,
+                        options: { wait_for_model: true }
+                    })
                 });
 
                 if (apiResponse.ok) {
                     const data = await apiResponse.json();
-                    // Update status to "connected"
-                    statusDot.className = 'w-2 h-2 bg-green-500 rounded-full';
                     
-                    const responseText = data.generated_text || data[0]?.generated_text;
-                    if (responseText) return responseText;
+                    // Successful API response
+                    statusDot.className = 'w-2 h-2 bg-green-500 rounded-full';
+                    statusText.innerText = 'AI Status: Connected';
+                    
+                    // Handle different Hugging Face response formats
+                    const resultText = Array.isArray(data) ? data[0]?.generated_text : data.generated_text;
+                    if (resultText) return resultText;
                 }
-                throw new Error('API failed');
+                
+                throw new Error('API request failed');
             } catch (error) {
                 console.error('AI Error:', error);
-                // Update status to "fallback"
-                statusDot.className = 'w-2 h-2 bg-red-500 rounded-full';
                 
-                // Fallback to local logic if API fails
+                // Update UI to show fallback state
+                statusDot.className = 'w-2 h-2 bg-red-500 rounded-full';
+                statusText.innerText = 'AI Status: Local Knowledge';
+                
+                // Local fallback logic
                 const lowerText = prompt.toLowerCase();
                 for (let key in responses) {
                     if (lowerText.includes(key)) return responses[key];
