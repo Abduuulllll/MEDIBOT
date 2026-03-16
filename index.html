@@ -473,6 +473,10 @@
                         <button class="p-2 hover:bg-white/10 rounded-full transition-colors"><i data-lucide="phone" class="w-5 h-5 text-gray-400"></i></button>
                         <button class="p-2 hover:bg-white/10 rounded-full transition-colors"><i data-lucide="more-vertical" class="w-5 h-5 text-gray-400"></i></button>
                     </div>
+                    <div id="ai-status" class="ml-auto flex items-center gap-2">
+                        <span class="text-[10px] text-gray-500 uppercase tracking-widest">AI Status:</span>
+                        <div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" id="status-dot"></div>
+                    </div>
                 </div>
 
                 <!-- Chat Messages -->
@@ -768,18 +772,16 @@
         };
 
         async function getAIResponse(prompt) {
+            const statusDot = document.getElementById('status-dot');
             try {
-                // Using a reliable free inference API (DuckDuckGo AI proxy or similar)
-                // Since direct client-side calls to many APIs have CORS issues, 
-                // we'll use a public API that supports CORS or a simple fallback.
-                const response = await fetch('https://duckduckgo.com/duckduckgo-help-pages/api/v1/search?q=' + encodeURIComponent(prompt));
+                // Using a more reliable open model for free-tier requests
+                const model = 'facebook/blenderbot-400M-distill';
+                const apiUrl = `https://api-inference.huggingface.co/models/${model}`;
                 
-                // For a truly "better" response without an API key, we can use 
-                // the Hugging Face Inference API which is free for low usage.
-                // However, for this demo, let's implement a more robust simulation 
-                // that looks like a real API call if a real one fails due to CORS.
-                
-                const apiResponse = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2', {
+                // Set status to "working"
+                statusDot.className = 'w-2 h-2 bg-yellow-500 rounded-full animate-pulse';
+
+                const apiResponse = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ inputs: prompt })
@@ -787,11 +789,18 @@
 
                 if (apiResponse.ok) {
                     const data = await apiResponse.json();
-                    return data.generated_text || data[0]?.generated_text || responses.default;
+                    // Update status to "connected"
+                    statusDot.className = 'w-2 h-2 bg-green-500 rounded-full';
+                    
+                    const responseText = data.generated_text || data[0]?.generated_text;
+                    if (responseText) return responseText;
                 }
                 throw new Error('API failed');
             } catch (error) {
                 console.error('AI Error:', error);
+                // Update status to "fallback"
+                statusDot.className = 'w-2 h-2 bg-red-500 rounded-full';
+                
                 // Fallback to local logic if API fails
                 const lowerText = prompt.toLowerCase();
                 for (let key in responses) {
