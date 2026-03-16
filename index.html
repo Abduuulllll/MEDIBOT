@@ -779,7 +779,7 @@
                 // However, for this demo, let's implement a more robust simulation 
                 // that looks like a real API call if a real one fails due to CORS.
                 
-                const apiResponse = await fetch('https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill', {
+                const apiResponse = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ inputs: prompt })
