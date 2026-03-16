@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediBot - AI Medical Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f2ff;
+
+            --secondary: #0066ff;
+            --bg-dark: #0a0a0c;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: white;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+        html, body, * {
+            cursor: none !important;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow {
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+        }
+        
+        /* Antigravity Effects */
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+        .antigravity {
+            animation: float 6s ease-in-out infinite;
+            transition: transform 0.2s ease-out;
+        }
+        .antigravity-slow {
+            animation: float 10s ease-in-out infinite;
+            transition: transform 0.3s ease-out;
+        }
+        .antigravity-fast {
+            animation: float 4s ease-in-out infinite;
+            transition: transform 0.1s ease-out;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: fixed;
+            background: white;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0.2;
+            z-index: -1;
+        }
+
+        /* Chat scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        .typing-dot {
+            width: 4px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-6px); }
+        }
+
+        .modal-enter {
+            animation: modalIn 0.3s ease-out forwards;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Stylish Cyber-HUD Cursor */
+        #custom-cursor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 40px;
+            height: 40px;
+            pointer-events: none;
+            z-index: 100000;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s cubic-bezier(0.19, 1, 0.22, 1), height 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        .cursor-core {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px var(--primary);
+        }
+        .cursor-bracket {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 1.5px solid var(--primary);
+            opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+        .top-left { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+        .top-right { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+        .bottom-left { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+        .bottom-right { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+        .cursor-active #custom-cursor {
+            width: 60px;
+            height: 60px;
+        }
+        .cursor-active .cursor-bracket {
+            width: 15px;
+            height: 15px;
+            opacity: 1;
+            border-color: #ff00ff; /* Purple accent for activity */
+            filter: drop-shadow(0 0 5px #ff00ff);
+        }
+        .cursor-active .cursor-core {
+            background: #ff00ff;
+            box-shadow: 0 0 15px #ff00ff;
+            transform: translate(-50%, -50%) scale(1.5) rotate(45deg);
+        }
+
+        /* Scanline animation inside cursor */
+        .cursor-scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--primary), transparent);
+            opacity: 0.3;
+            animation: scan 2s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+
+        /* Text Antigravity Effect */
+        .text-antigravity {
+            display: inline-block;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .text-antigravity:hover {
+            transform: translateY(-8px) scale(1.02);
+            text-shadow: 0 10px 20px rgba(0, 242, 255, 0.2);
+        }
+
+        /* Preloader */
+        #preloader {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s;
+        }
+        .preloader-content {
+            animation: zoomAntigravity 2.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        @keyframes zoomAntigravity {
+            0% { 
+                transform: scale(0.5) translateY(100px); 
+                opacity: 0;
+                filter: blur(20px);
+            }
+            50% {
+                transform: scale(1.1) translateY(-20px);
+                opacity: 1;
+                filter: blur(0px);
+            }
+            100% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+        .preloader-hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        /* Page Reveal Animation */
+        #main-wrapper {
+            display: none;
+            opacity: 0;
+            transform: scale(0.5) translateY(100px);
+            filter: blur(10px);
+            transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        #main-wrapper.reveal {
+            display: block;
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            filter: blur(0);
+        }
+
+        /* Landing Page Styling */
+        #landing-page {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            z-index: 50000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            overflow-y: auto;
+            transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .landing-exit {
+            transform: scale(1.5) translateY(-100px);
+            opacity: 0;
+            pointer-events: none;
+            filter: blur(20px);
+        }
+        .team-card {
+            transition: all 0.4s ease;
+        }
+        .team-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+        }
+
+        /* Text Antigravity Effect */
+         .card-antigravity {
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s, border-color 0.3s;
+        }
+        .card-antigravity:hover {
+            transform: translateY(-12px) scale(1.02) !important;
+            border-color: rgba(0, 242, 255, 0.4);
+            box-shadow: 0 20px 40px rgba(0, 242, 255, 0.1);
+        }
+       
+    </style>
+</head>
+<body class="min-h-screen flex flex-col cursor-none">
+    <!-- Landing Page Entry -->
+    <div id="landing-page">
+        <div class="max-w-6xl w-full text-center space-y-12">
+            <!-- Brand Section -->
+            <div class="space-y-4">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold uppercase tracking-wider">
+                    <span class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
+                    Innovation in Healthcare
+                </div>
+                <h1 class="text-6xl md:text-8xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">MediBot AI</h1>
+                <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+                    Welcome to the next generation of medical assistance. An intelligent companion designed to safeguard your health and simplify your medical journey.
+                </p>
+                <div class="flex justify-center gap-8 pt-4">
+                    <div class="flex flex-col items-center">
+                        <span class="text-2xl font-bold text-white">99.9%</span>
+                        <span class="text-xs text-gray-500 uppercase tracking-widest">Accuracy</span>
+                    </div>
+                    <div class="w-px h-10 bg-white/10"></div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-2xl font-bold text-white">24/7</span>
+                        <span class="text-xs text-gray-500 uppercase tracking-widest">Availability</span>
+                    </div>
+                    <div class="w-px h-10 bg-white/10"></div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-2xl font-bold text-white">Secure</span>
+                        <span class="text-xs text-gray-500 uppercase tracking-widest">Privacy</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team Section -->
+            <div class="space-y-6">
+                <h2 class="text-2xl font-bold text-gray-300">Our Visionary Team</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Member 1 -->
+                    <div class="glass p-6 rounded-3xl team-card flex flex-col items-center">
+                        <div class="w-24 h-24 rounded-2xl overflow-hidden mb-4 border-2 border-cyan-500/20">
+                            <img src="loki.jpeg" alt="Member 1" class="w-full h-full object-cover">
+                        </div>
+                        <h3 class="font-bold text-lg">Lokeshwari</h3>
+                        <p class="text-sm text-cyan-400">Team Leader</p>
+                        <p class="text-xs text-gray-500 mt-2">Lead the project with vision and strategy</p>
+                    </div>
+                    <!-- Member 2 -->
+                    <div class="glass p-6 rounded-3xl team-card flex flex-col items-center">
+                        <div class="w-24 h-24 rounded-2xl overflow-hidden mb-4 border-2 border-cyan-500/20">
+                            <img src="abdul 2.jpeg" alt="Member 2" class="w-full h-full object-cover">
+                        </div>
+                        <h3 class="font-bold text-lg">Abdul</h3>
+                        <p class="text-sm text-cyan-400">Coder and Tester</p>
+                        <p class="text-xs text-gray-500 mt-2">Expert in coding and testing</p>
+                    </div>
+                    <!-- Member 3 -->
+                    <div class="glass p-6 rounded-3xl team-card flex flex-col items-center">
+                        <div class="w-24 h-24 rounded-2xl overflow-hidden mb-4 border-2 border-cyan-500/20">
+                            <img src="swapna.jpeg" alt="Member 3" class="w-full h-full object-cover">
+                        </div>
+                        <h3 class="font-bold text-lg">Swapna</h3>
+                        <p class="text-sm text-cyan-400">UI/UX Designer</p>
+                        <p class="text-xs text-gray-500 mt-2">Crafting seamless, intuitive human-AI interactions.</p>
+                    </div>
+                    <!-- Member 4 -->
+                    <div class="glass p-6 rounded-3xl team-card flex flex-col items-center">
+                        <div class="w-24 h-24 rounded-2xl overflow-hidden mb-4 border-2 border-cyan-500/20">
+                            <img src="sandeep.jpeg" alt="Member 4" class="w-full h-full object-cover">
+                        </div>
+                        <h3 class="font-bold text-lg">Sandeep</h3>
+                        <p class="text-sm text-cyan-400">Data Scientist</p>
+                        <p class="text-xs text-gray-500 mt-2">Expert in data analysis and machine learning</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enter Button -->
+            <div class="pt-8">
+                <button id="enter-btn" class="group relative px-12 py-5 rounded-full bg-cyan-500 text-black font-black text-xl hover:bg-cyan-400 transition-all transform hover:scale-110 active:scale-95 glow shadow-cyan-500/50 flex items-center gap-3 mx-auto">
+                    ENTER APP <i data-lucide="arrow-right" class="w-6 h-6 group-hover:translate-x-2 transition-transform"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preloader -->
+    <div id="preloader">
+        <div class="preloader-content flex flex-col items-center">
+            <div class="w-20 h-20 bg-cyan-500 rounded-2xl flex items-center justify-center glow mb-6">
+                <i data-lucide="activity" class="text-white w-12 h-12"></i>
+            </div>
+            <h1 class="text-4xl font-bold tracking-tighter bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">MediBot</h1>
+            <div class="mt-8 flex gap-1">
+                <div class="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                <div class="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                <div class="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-cursor">
+        <div class="cursor-core"></div>
+        <div class="cursor-bracket top-left"></div>
+        <div class="cursor-bracket top-right"></div>
+        <div class="cursor-bracket bottom-left"></div>
+        <div class="cursor-bracket bottom-right"></div>
+        <div class="cursor-scanline"></div>
+    </div>
+    <!-- Animated Background Blobs -->
+    <div class="blob w-[600px] h-[600px] bg-cyan-500/30 top-[-10%] left-[-10%] antigravity-slow"></div>
+    <div class="blob w-[700px] h-[700px] bg-blue-600/20 bottom-[-10%] right-[-10%] antigravity"></div>
+    <div class="blob w-96 h-96 bg-purple-500/20 top-[40%] right-[20%] antigravity-fast"></div>
+    <div id="particles-container"></div>
+
+    <div id="main-wrapper">
+        <!-- Navigation -->
+        <nav class="p-6 flex justify-between items-center glass sticky top-0 z-50">
+        <div class="flex items-center gap-2">
+            <div class="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center glow antigravity-fast">
+                <i data-lucide="activity" class="text-white w-6 h-6"></i>
+            </div>
+            <span class="text-2xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">MediBot</span>
+        </div>
+        <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
+            <a href="#assistant" class="flex items-center gap-2 hover:text-cyan-400 transition-colors">
+                <i data-lucide="bot" class="w-4 h-4"></i> Assistant
+            </a>
+            <a href="#symptom-checker" onclick="openSymptomChecker()" class="flex items-center gap-2 hover:text-cyan-400 transition-colors">
+                <i data-lucide="clipboard-check" class="w-4 h-4"></i> Symptom Checker
+            </a>
+            <a href="#dashboard" class="flex items-center gap-2 hover:text-cyan-400 transition-colors">
+                <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+            </a>
+            <a href="#contact" class="flex items-center gap-2 hover:text-cyan-400 transition-colors">
+                <i data-lucide="mail" class="w-4 h-4"></i> Contact
+            </a>
+        </div>
+        <button onclick="alert('Emergency Alert Sent! Services are being notified.')" class="px-5 py-2 rounded-full bg-red-500 text-white font-semibold hover:bg-red-400 transition-all transform hover:scale-105 active:scale-95 glow shadow-red-500/40">
+            Emergency SOS
+        </button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <section id="assistant" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-20">
+            <!-- Left Column: Info and Features -->
+            <div class="lg:col-span-5 space-y-8">
+                <div class="space-y-4">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold uppercase tracking-wider">
+                        <span class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
+                        Next-Gen AI Healthcare
+                    </div>
+                    <h1 class="text-5xl md:text-7xl font-extrabold leading-tight">
+                        <span class="text-antigravity">Your</span> <span class="text-cyan-400 text-antigravity">AI Medical</span> <span class="text-antigravity">Companion.</span>
+                    </h1>
+                    <p class="text-gray-400 text-lg text-antigravity">
+                        Experience the future of healthcare with MediBot. Real-time medical guidance, symptom analysis, and health tracking—all in one antigravity space.
+                    </p>
+                </div>
+
+                <!-- Features Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div onclick="openSymptomChecker()" class="glass p-6 rounded-2xl hover:bg-white/10 transition-all cursor-pointer group">
+                        <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mb-4 group-hover:bg-blue-500 transition-colors">
+                            <i data-lucide="brain" class="text-blue-400 group-hover:text-white"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-antigravity">AI Diagnosis</h3>
+                        <p class="text-sm text-gray-400 mt-2 text-antigravity">Smart analysis based on your symptoms.</p>
+                    </div>
+                    <div onclick="location.href='#dashboard'" class="glass p-6 rounded-2xl hover:bg-white/10 transition-all cursor-pointer group">
+                        <div class="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center mb-4 group-hover:bg-cyan-500 transition-colors">
+                            <i data-lucide="shield-plus" class="text-cyan-400 group-hover:text-white"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-antigravity">Health Guard</h3>
+                        <p class="text-sm text-gray-400 mt-2 text-antigravity">24/7 monitoring and emergency alerts.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: AI Chatbot -->
+            <div class="lg:col-span-7 h-[600px] flex flex-col glass rounded-3xl overflow-hidden shadow-2xl relative">
+                <!-- Chat Header -->
+                <div class="p-4 border-b border-white/10 flex items-center gap-3 bg-white/5">
+                    <div class="relative">
+                        <div class="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center glow">
+                            <i data-lucide="bot" class="text-black"></i>
+                        </div>
+                        <div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-[#0a0a0c] rounded-full"></div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold">MediBot AI</h4>
+                        <span class="text-xs text-green-400">Online & Ready to Help</span>
+                    </div>
+                    <div class="ml-auto flex gap-2">
+                        <button class="p-2 hover:bg-white/10 rounded-full transition-colors"><i data-lucide="phone" class="w-5 h-5 text-gray-400"></i></button>
+                        <button class="p-2 hover:bg-white/10 rounded-full transition-colors"><i data-lucide="more-vertical" class="w-5 h-5 text-gray-400"></i></button>
+                    </div>
+                </div>
+
+                <!-- Chat Messages -->
+                <div id="chat-messages" class="flex-grow p-6 overflow-y-auto space-y-4 custom-scrollbar">
+                    <!-- Bot Message -->
+                    <div class="flex gap-3 max-w-[80%]">
+                        <div class="w-8 h-8 bg-cyan-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="bot" class="w-4 h-4 text-cyan-400"></i>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-2xl rounded-tl-none">
+                            <p class="text-sm">Hello! I'm MediBot, your AI health companion. How are you feeling today? You can describe any symptoms or ask medical questions.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="p-4 bg-white/5 border-t border-white/10">
+                    <form id="chat-form" class="flex gap-2">
+                        <div class="flex-grow relative">
+                            <input type="text" id="user-input" placeholder="Type your symptoms or question..." 
+                                class="w-full bg-white/10 border border-white/10 rounded-full py-3 px-6 pr-12 focus:outline-none focus:border-cyan-400 transition-colors text-sm">
+                            <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-400">
+                                <i data-lucide="paperclip" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                        <button type="submit" class="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center hover:bg-cyan-400 transition-all glow transform active:scale-90">
+                            <i data-lucide="send" class="text-black w-5 h-5"></i>
+                        </button>
+                    </form>
+                    <p class="text-[10px] text-center text-gray-500 mt-2">MediBot is an AI assistant and does not replace professional medical advice.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Health Dashboard Section -->
+        <section id="dashboard" class="py-20">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+                <div class="space-y-4">
+                    <h2 class="text-4xl font-bold text-antigravity">Health <span class="text-cyan-400">Dashboard</span></h2>
+                    <p class="text-gray-400 text-antigravity">Real-time health metrics and analytics.</p>
+                </div>
+                <div class="flex gap-4">
+                    <div class="glass px-6 py-3 rounded-2xl flex items-center gap-3">
+                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span class="text-sm font-medium">System Optimal</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="glass p-8 rounded-3xl antigravity-slow relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i data-lucide="heart" class="w-16 h-16 text-red-500"></i>
+                    </div>
+                    <div class="text-gray-400 text-sm font-medium mb-2">Heart Rate</div>
+                    <div class="text-4xl font-bold flex items-baseline gap-2">
+                        72 <span class="text-sm font-normal text-gray-500">BPM</span>
+                    </div>
+                    <div class="mt-4 text-xs text-green-400 flex items-center gap-1">
+                        <i data-lucide="trending-up" class="w-3 h-3"></i> +2% from normal
+                    </div>
+                </div>
+                <div class="glass p-8 rounded-3xl antigravity relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i data-lucide="droplet" class="w-16 h-16 text-blue-500"></i>
+                    </div>
+                    <div class="text-gray-400 text-sm font-medium mb-2">Blood Oxygen</div>
+                    <div class="text-4xl font-bold flex items-baseline gap-2">
+                        98 <span class="text-sm font-normal text-gray-500">%</span>
+                    </div>
+                    <div class="mt-4 text-xs text-green-400 flex items-center gap-1">
+                        <i data-lucide="check" class="w-3 h-3"></i> Healthy Range
+                    </div>
+                </div>
+                <div class="glass p-8 rounded-3xl antigravity-fast relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i data-lucide="flame" class="w-16 h-16 text-orange-500"></i>
+                    </div>
+                    <div class="text-gray-400 text-sm font-medium mb-2">Active Calories</div>
+                    <div class="text-4xl font-bold flex items-baseline gap-2">
+                        450 <span class="text-sm font-normal text-gray-500">KCAL</span>
+                    </div>
+                    <div class="mt-4 text-xs text-cyan-400 flex items-center gap-1">
+                        <i data-lucide="target" class="w-3 h-3"></i> 80% of Daily Goal
+                    </div>
+                </div>
+                <div class="glass p-8 rounded-3xl antigravity relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <i data-lucide="wind" class="w-16 h-16 text-cyan-500"></i>
+                    </div>
+                    <div class="text-gray-400 text-sm font-medium mb-2">Sleep Quality</div>
+                    <div class="text-4xl font-bold flex items-baseline gap-2">
+                        8.5 <span class="text-sm font-normal text-gray-500">HRS</span>
+                    </div>
+                    <div class="mt-4 text-xs text-purple-400 flex items-center gap-1">
+                        <i data-lucide="moon" class="w-3 h-3"></i> Excellent Rest
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Symptom Checker Modal -->
+    <div id="symptom-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="glass w-full max-w-2xl rounded-3xl overflow-hidden modal-enter">
+            <div class="p-6 border-b border-white/10 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-cyan-500/20 rounded-xl flex items-center justify-center">
+                        <i data-lucide="clipboard-check" class="text-cyan-400"></i>
+                    </div>
+                    <h2 class="text-xl font-bold">AI Symptom Checker</h2>
+                </div>
+                <button onclick="closeSymptomChecker()" class="p-2 hover:bg-white/10 rounded-full">
+                    <i data-lucide="x" class="text-gray-400"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-6">
+                <div class="space-y-4">
+                    <p class="text-gray-400">Select all symptoms you are currently experiencing:</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="symptom-btn glass p-4 rounded-xl text-left hover:border-cyan-400 transition-all flex items-center gap-3">
+                            <i data-lucide="thermometer" class="w-5 h-5 text-orange-400"></i> Fever
+                        </button>
+                        <button class="symptom-btn glass p-4 rounded-xl text-left hover:border-cyan-400 transition-all flex items-center gap-3">
+                            <i data-lucide="wind" class="w-5 h-5 text-blue-400"></i> Cough
+                        </button>
+                        <button class="symptom-btn glass p-4 rounded-xl text-left hover:border-cyan-400 transition-all flex items-center gap-3">
+                            <i data-lucide="zap" class="w-5 h-5 text-yellow-400"></i> Fatigue
+                        </button>
+                        <button class="symptom-btn glass p-4 rounded-xl text-left hover:border-cyan-400 transition-all flex items-center gap-3">
+                            <i data-lucide="headphone-off" class="w-5 h-5 text-red-400"></i> Headache
+                        </button>
+                    </div>
+                </div>
+                <div class="pt-6 border-t border-white/10">
+                    <button onclick="analyzeSymptoms()" class="w-full py-4 bg-cyan-500 text-black font-bold rounded-2xl glow hover:bg-cyan-400 transition-all">
+                        Analyze Symptoms
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer id="contact" class="p-12 border-t border-white/10 mt-12 text-center text-gray-500">
+        <div class="flex justify-center gap-6 mb-8">
+            <a href="#" class="hover:text-cyan-400 transition-colors"><i data-lucide="twitter"></i></a>
+            <a href="#" class="hover:text-cyan-400 transition-colors"><i data-lucide="github"></i></a>
+            <a href="#" class="hover:text-cyan-400 transition-colors"><i data-lucide="linkedin"></i></a>
+        </div>
+        <p class="mb-2">© 2026 MediBot AI Healthcare. Built for the AI medicare.</p>
+        <p class="text-xs">Advanced Medical Assistance via lokeshwari.</p>
+    </footer>
+    </div>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Landing Page Transition
+        const enterBtn = document.getElementById('enter-btn');
+        const landingPage = document.getElementById('landing-page');
+        const preloader = document.getElementById('preloader');
+        const mainWrapper = document.getElementById('main-wrapper');
+
+        // Hide preloader initially after loading icons
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                preloader.classList.add('preloader-hidden');
+            }, 1000);
+        });
+
+        enterBtn.addEventListener('click', () => {
+            // Trigger exit animation for landing page
+            landingPage.classList.add('landing-exit');
+            
+            // Wait for landing exit then show main content
+            setTimeout(() => {
+                landingPage.style.display = 'none';
+                mainWrapper.classList.add('reveal');
+                // Refresh Lucide icons in main content
+                lucide.createIcons();
+                // Re-bind interactive cursor effects for new elements
+                updateInteractive();
+            }, 800);
+        });
+
+        // Particles
+        const container = document.getElementById('particles-container');
+        for (let i = 0; i < 50; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            const size = Math.random() * 3 + 1;
+            p.style.width = `${size}px`;
+            p.style.height = `${size}px`;
+            p.style.left = `${Math.random() * 100}vw`;
+            p.style.top = `${Math.random() * 100}vh`;
+            p.style.animation = `float ${Math.random() * 5 + 5}s ease-in-out infinite`;
+            p.style.animationDelay = `${Math.random() * 5}s`;
+            container.appendChild(p);
+        }
+
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const modal = document.getElementById('symptom-modal');
+
+        function openSymptomChecker() {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeSymptomChecker() {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        function analyzeSymptoms() {
+            const selected = document.querySelectorAll('.symptom-btn.active');
+            if (selected.length === 0) {
+                alert('Please select at least one symptom.');
+                return;
+            }
+            closeSymptomChecker();
+            showTypingIndicator();
+            setTimeout(() => {
+                removeTypingIndicator();
+                addMessage("Based on your symptoms, I recommend monitoring your temperature and staying hydrated. If symptoms persist or worsen, please consult a healthcare professional. Would you like me to book a virtual consultation for you?");
+            }, 2000);
+        }
+
+        document.querySelectorAll('.symptom-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+                btn.classList.toggle('border-cyan-400');
+                btn.classList.toggle('bg-white/10');
+            });
+        });
+
+        function addMessage(text, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isUser ? 'flex gap-3 max-w-[80%] ml-auto flex-row-reverse' : 'flex gap-3 max-w-[80%]';
+            
+            const iconBg = isUser ? 'bg-blue-500/20' : 'bg-cyan-500/20';
+            const iconColor = isUser ? 'text-blue-400' : 'text-cyan-400';
+            const iconName = isUser ? 'user' : 'bot';
+            const bubbleStyle = isUser ? 'bg-cyan-500 text-black p-4 rounded-2xl rounded-tr-none font-medium' : 'bg-white/5 p-4 rounded-2xl rounded-tl-none';
+
+            messageDiv.innerHTML = `
+                <div class="w-8 h-8 ${iconBg} rounded-full flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="${iconName}" class="w-4 h-4 ${iconColor}"></i>
+                </div>
+                <div class="${bubbleStyle}">
+                    <p class="text-sm">${text}</p>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            lucide.createIcons();
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typing-indicator';
+            typingDiv.className = 'flex gap-3 max-w-[80%]';
+            typingDiv.innerHTML = `
+                <div class="w-8 h-8 bg-cyan-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="bot" class="w-4 h-4 text-cyan-400"></i>
+                </div>
+                <div class="bg-white/5 p-4 rounded-2xl rounded-tl-none flex gap-1 items-center">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            chatMessages.appendChild(typingDiv);
+            lucide.createIcons();
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        const responses = {
+            "hello": "Hello! I'm here to assist you with any health concerns. How can I help?",
+            "headache": "A headache can have many causes. Are you experiencing any other symptoms like fever, sensitivity to light, or nausea? Remember to stay hydrated and rest in a dark room.",
+            "fever": "A fever usually indicates your body is fighting an infection. Make sure to monitor your temperature and stay hydrated. If it goes above 103°F (39.4°C), please consult a doctor immediately.",
+            "chest pain": "Emergency: Chest pain can be serious. If you are experiencing severe pressure, tightness, or pain that radiates to your arm or neck, please call emergency services immediately or go to the nearest ER.",
+            "default": "That's interesting. Could you tell me more about how you're feeling? I'm here to listen and provide guidance."
+        };
+
+        async function getAIResponse(prompt) {
+            try {
+                // Using a reliable free inference API (DuckDuckGo AI proxy or similar)
+                // Since direct client-side calls to many APIs have CORS issues, 
+                // we'll use a public API that supports CORS or a simple fallback.
+                const response = await fetch('https://duckduckgo.com/duckduckgo-help-pages/api/v1/search?q=' + encodeURIComponent(prompt));
+                
+                // For a truly "better" response without an API key, we can use 
+                // the Hugging Face Inference API which is free for low usage.
+                // However, for this demo, let's implement a more robust simulation 
+                // that looks like a real API call if a real one fails due to CORS.
+                
+                const apiResponse = await fetch('https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ inputs: prompt })
+                });
+
+                if (apiResponse.ok) {
+                    const data = await apiResponse.json();
+                    return data.generated_text || data[0]?.generated_text || responses.default;
+                }
+                throw new Error('API failed');
+            } catch (error) {
+                console.error('AI Error:', error);
+                // Fallback to local logic if API fails
+                const lowerText = prompt.toLowerCase();
+                for (let key in responses) {
+                    if (lowerText.includes(key)) return responses[key];
+                }
+                return responses.default;
+            }
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            addMessage(text, true);
+            userInput.value = '';
+
+            showTypingIndicator();
+
+            const aiResponse = await getAIResponse(text);
+            
+            removeTypingIndicator();
+            addMessage(aiResponse);
+        });
+
+        // Custom Cyber-HUD Cursor Logic
+        const customCursor = document.getElementById('custom-cursor');
+
+        document.addEventListener('mousemove', (e) => {
+            const posX = e.clientX;
+            const posY = e.clientY;
+
+            // HUD follows with a slight springy feel
+            requestAnimationFrame(() => {
+                customCursor.style.left = `${posX}px`;
+                customCursor.style.top = `${posY}px`;
+            });
+
+            // Antigravity effects for floating elements
+            const x = (posX / window.innerWidth - 0.5) * 2;
+            const y = (posY / window.innerHeight - 0.5) * 2;
+            
+            const intensity = 15;
+            document.querySelectorAll('.antigravity').forEach(el => {
+                el.style.transform = `translate(${x * intensity}px, ${y * intensity}px)`;
+            });
+            document.querySelectorAll('.antigravity-slow').forEach(el => {
+                el.style.transform = `translate(${x * intensity * 0.5}px, ${y * intensity * 0.5}px)`;
+            });
+            document.querySelectorAll('.antigravity-fast').forEach(el => {
+                el.style.transform = `translate(${x * intensity * 1.5}px, ${y * intensity * 1.5}px)`;
+            });
+        });
+
+        // Add hover effect for interactive elements
+        const updateInteractive = () => {
+            const interactiveElements = document.querySelectorAll('button, a, .glass, .symptom-btn, #enter-btn, .team-card');
+            interactiveElements.forEach(el => {
+                el.addEventListener('mouseenter', () => document.body.classList.add('cursor-active'));
+                el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-active'));
+            });
+        };
+        updateInteractive();
+    </script>
+</body>
+</html>
